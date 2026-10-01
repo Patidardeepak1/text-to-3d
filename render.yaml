@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: 3dforge-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AI_PROVIDER
+        value: fal
+      - key: FAL_MODEL_ID
+        value: tripo3d/h3.1/text-to-3d
+      - key: CORS_ORIGIN
+        sync: false
+      - key: FAL_KEY
+        sync: false
