@@ -7,6 +7,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import { requestContext } from './middleware/requestContext.js'
 import { createRouter } from './routes/index.js'
 import { createTextTo3DProvider, type TextTo3DProvider } from './services/ai/provider.js'
+import { isAllowedOrigin } from './utils/corsOrigin.js'
 import { GenerationService } from './services/generationService.js'
 import { JobStore } from './services/jobStore.js'
 import { ModelFiles } from './services/modelFiles.js'
@@ -26,7 +27,9 @@ export function createApp(provider: TextTo3DProvider = createTextTo3DProvider())
   )
   app.use(
     cors({
-      origin: origins.includes('*') ? true : origins,
+      origin(origin, callback) {
+        callback(null, isAllowedOrigin(origin, origins))
+      },
       methods: ['GET', 'POST', 'OPTIONS'],
       exposedHeaders: ['Content-Disposition', 'Content-Length', 'Content-Type', 'X-Request-Id'],
     }),
