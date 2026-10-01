@@ -10,10 +10,10 @@ services:
       - key: NODE_ENV
         value: production
       - key: AI_PROVIDER
-        value: fal
-      - key: FAL_MODEL_ID
-        value: tripo3d/h3.1/text-to-3d
+        value: tripo
+      - key: TRIPO_MODEL
+        value: v3.1-20260211
       - key: CORS_ORIGIN
         sync: false
-      - key: FAL_KEY
+      - key: TRIPO_API_KEY
         sync: false

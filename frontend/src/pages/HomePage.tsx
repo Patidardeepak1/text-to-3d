@@ -73,7 +73,7 @@ export function HomePage() {
             ) : null}
             {generation.configured === false ? (
               <p className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100" role="status">
-                The server does not have a text-to-3D API key yet. Add FAL_KEY to the backend environment, or set AI_PROVIDER=demo for a labeled sample model.
+                The server does not have a text-to-3D API key yet. Add TRIPO_API_KEY to the backend environment, or set AI_PROVIDER=demo for a labeled sample model.
               </p>
             ) : null}
             {generation.demoMode ? (
@@ -81,7 +81,7 @@ export function HomePage() {
                 Development mode is on. Generations use a sample GLB and are labeled Development Demo Model.
               </p>
             ) : (
-              <p className="mb-4 text-sm text-muted">Powered by {generation.modelLabel} through fal.ai. Each generation uses your API account.</p>
+              <p className="mb-4 text-sm text-muted">Powered by {generation.modelLabel} through the Tripo API. Each generation uses your API account.</p>
             )}
             <PromptComposer
               value={generation.prompt}
@@ -165,7 +165,7 @@ export function HomePage() {
           <h2 className="font-serif text-4xl">About</h2>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             <AboutCard title="Describe" body="A prompt is checked in the browser and again on the server before it ever reaches the model." />
-            <AboutCard title="Generate" body="The API queues Tripo H3.1 on fal.ai, waits for the real GLB, and stores it for viewing and download." />
+            <AboutCard title="Generate" body="The API sends your prompt to Tripo, downloads the GLB as soon as it is ready, and stores it for viewing and download." />
             <AboutCard title="Explore" body="React Three Fiber frames the mesh, centers it, and lets you orbit it with a resettable camera." />
           </div>
         </section>

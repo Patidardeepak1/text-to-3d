@@ -78,7 +78,7 @@ export class FalTextTo3DProvider implements TextTo3DProvider {
     if (!response.ok) {
       const technical = safeProviderError(response.status, payload, response.statusText)
       logger.error('fal.submit_failed', { status: response.status, technical, modelId: this.modelId })
-      throw this.mapHttpError(response.status, technical)
+      throw this.mapHttpError(response.status, technical, payload)
     }
 
     if (!isRecord(payload) || typeof payload.request_id !== 'string') {
@@ -218,7 +218,10 @@ export class FalTextTo3DProvider implements TextTo3DProvider {
     throw new ProviderError(502, 'CANCEL_FAILED', 'Cancellation was not accepted')
   }
 
-  private mapHttpError(status: number, technical: string): ProviderError {
+  private mapHttpError(status: number, technical: string, payload?: unknown): ProviderError {
+    if (isExhaustedBalance(payload)) {
+      return new ProviderError(402, 'BILLING', 'Fal account balance is exhausted')
+    }
     if (status === 401 || status === 403) {
       return new ProviderError(status, 'UNAUTHORIZED', technical)
     }
@@ -230,6 +233,12 @@ export class FalTextTo3DProvider implements TextTo3DProvider {
     }
     return new ProviderError(status, 'PROVIDER_ERROR', technical)
   }
+}
+
+function isExhaustedBalance(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload === null) return false
+  const detail = 'detail' in payload && typeof payload.detail === 'string' ? payload.detail : ''
+  return /exhausted balance|locked/i.test(detail)
 }
 
 function safeProviderError(status: number, payload: unknown, fallback: string): string {

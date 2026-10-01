@@ -8,7 +8,9 @@ async function main() {
     logger.info('server.started', {
       port: env.PORT,
       provider: env.AI_PROVIDER,
-      configured: env.AI_PROVIDER === 'demo' || env.FAL_KEY.length > 0,
+      configured:
+        env.AI_PROVIDER === 'demo' ||
+        (env.AI_PROVIDER === 'fal' ? env.FAL_KEY.length > 0 : env.TRIPO_API_KEY.length > 0),
     })
   })
 }

@@ -1,4 +1,4 @@
-const ALLOWED_SUFFIXES = ['fal.media', 'fal.ai']
+const ALLOWED_SUFFIXES = ['fal.media', 'fal.ai', 'tripo3d.ai', 'tripo3d.com']
 
 export function assertAllowedAssetUrl(raw: string): URL {
   let url: URL

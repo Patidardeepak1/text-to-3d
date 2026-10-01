@@ -36,7 +36,7 @@ export class GenerationService {
       throw new AppError(
         503,
         'PROVIDER_NOT_CONFIGURED',
-        'The 3D generation service is not configured. Add FAL_KEY on the server.',
+        this.missingKeyMessage(),
       )
     }
 
@@ -271,6 +271,13 @@ export class GenerationService {
     record.generationTimeMs = Date.now() - Date.parse(record.startedAt)
   }
 
+  private missingKeyMessage(): string {
+    if (this.provider.id === 'tripo') {
+      return 'The 3D generation service is not configured. Add TRIPO_API_KEY on the server.'
+    }
+    return 'The 3D generation service is not configured. Add FAL_KEY on the server.'
+  }
+
   private isTerminal(status: GenerationRecord['status']) {
     return status === 'completed' || status === 'failed' || status === 'cancelled'
   }
@@ -282,6 +289,12 @@ export class GenerationService {
       }
       if (error.code === 'RATE_LIMITED') {
         return 'The 3D generation service is busy. Please wait and try again.'
+      }
+      if (error.code === 'BILLING') {
+        if (this.provider.id === 'tripo') {
+          return 'Your Tripo API credits are used up. Add credits at platform.tripo3d.ai, then try again.'
+        }
+        return 'Your fal.ai balance is used up. Add credits at fal.ai/dashboard/billing, then try again.'
       }
       if (error.code === 'UNAUTHORIZED') {
         return 'The 3D generation service rejected the server credentials.'
@@ -295,6 +308,7 @@ export class GenerationService {
     if (error instanceof ProviderError) {
       if (error.code === 'PROMPT_REJECTED') return 422
       if (error.code === 'RATE_LIMITED') return 429
+      if (error.code === 'BILLING') return 402
       if (error.code === 'UNAUTHORIZED') return 503
     }
     return 503

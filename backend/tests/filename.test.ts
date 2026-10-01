@@ -28,6 +28,13 @@ describe('asset url guard', () => {
     expect(assertAllowedAssetUrl('https://v3b.fal.media/files/abc/model.glb').hostname).toBe('v3b.fal.media')
   })
 
+  it('allows Tripo CDN hosts', () => {
+    expect(assertAllowedAssetUrl('https://cdn.tripo3d.ai/output/model_pbr.glb').hostname).toBe('cdn.tripo3d.ai')
+    expect(assertAllowedAssetUrl('https://tripo-data.rg1.data.tripo3d.com/output/model.glb').hostname).toBe(
+      'tripo-data.rg1.data.tripo3d.com',
+    )
+  })
+
   it('rejects unexpected hosts and insecure urls', () => {
     expect(() => assertAllowedAssetUrl('https://evil.example/model.glb')).toThrow(/not allowed/)
     expect(() => assertAllowedAssetUrl('http://v3.fal.media/model.glb')).toThrow(/HTTPS/)

@@ -159,7 +159,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       configured: metaQuery.data?.configured ?? null,
       apiOnline: metaQuery.isSuccess ? true : metaQuery.isError ? false : null,
       demoMode: metaQuery.data?.demo ?? false,
-      modelLabel: metaQuery.data?.modelLabel ?? 'Tripo H3.1',
+      modelLabel: metaQuery.data?.modelLabel ?? 'Tripo v3.1',
       start,
       cancel,
       regenerate,

@@ -2,7 +2,7 @@
 
 3DForge AI turns a written description into a 3D model you can orbit in the browser and download as a GLB.
 
-The backend sends the prompt to [Tripo H3.1 on fal.ai](https://fal.ai/models/tripo3d/h3.1/text-to-3d), waits for the queued job, stores the generated GLB, and serves it to a React Three Fiber viewer. A separate development mode can load a labeled sample model when you do not have an API key. That sample is never presented as AI output.
+The backend sends the prompt to the [Tripo API](https://developers.tripo3d.ai/en/docs/quick-start), polls the task, downloads the GLB before the link expires, and serves it to a React Three Fiber viewer. A separate development mode can load a labeled sample model when you do not have an API key. That sample is never presented as AI output.
 
 ## Features
 
@@ -16,7 +16,7 @@ The backend sends the prompt to [Tripo H3.1 on fal.ai](https://fal.ai/models/tri
 
 ## Demo
 
-Real generation needs a [fal.ai](https://fal.ai) API key in the backend environment. Without that key the API returns a clear configuration error. With `AI_PROVIDER=demo`, the UI loads the Khronos Duck sample and labels it **Development Demo Model**.
+Real generation needs a [Tripo API key](https://platform.tripo3d.ai) in the backend environment. Without that key the API returns a clear configuration error. With `AI_PROVIDER=demo`, the UI loads the Khronos Duck sample and labels it **Development Demo Model**.
 
 ## Screenshots
 
@@ -34,15 +34,15 @@ Capture these after the app is running locally:
 flowchart LR
   Browser[React viewer] --> API[Express API]
   API --> Provider[TextTo3DProvider]
-  Provider --> Fal[fal.ai Tripo H3.1]
-  Fal --> GLB[GLB file]
+  Provider --> Tripo[Tripo API v3.1]
+  Tripo --> GLB[GLB file]
   GLB --> Store[Local model store]
   Store --> Browser
 ```
 
-The rest of the backend depends on `TextTo3DProvider`, not on fal-specific types. Replacing the model means adding another class under `backend/src/services/ai/` and selecting it from configuration.
+The rest of the backend depends on `TextTo3DProvider`, not on Tripo-specific types. Replacing the model means adding another class under `backend/src/services/ai/` and selecting it from configuration.
 
-Polling is used instead of fal webhooks. Webhooks need a public HTTPS endpoint and signature checks, which is a poor fit for local development and for hosts that sleep. The browser polls `GET /api/v1/generations/:id` until the job finishes. Each poll asks fal for the real queue state. The UI does not invent percentages.
+The browser polls `GET /api/v1/generations/:id` about every 2.5 seconds. Each poll asks Tripo for the real task status. When the task succeeds, the server downloads `output.model_url` immediately, because those links expire after about 5 minutes.
 
 ## Tech stack
 
@@ -50,7 +50,7 @@ Frontend: React, Vite, TypeScript, Tailwind CSS, React Three Fiber, Three.js, Dr
 
 Backend: Node.js, Express, TypeScript, Zod, Helmet, CORS, express-rate-limit.
 
-AI: fal.ai queue API, default model `tripo3d/h3.1/text-to-3d`.
+AI: Tripo OpenAPI, default model `v3.1-20260211`.
 
 ## Project structure
 
@@ -79,20 +79,18 @@ backend/src
 ## How it works
 
 1. The composer checks length and whitespace.
-2. `POST /api/v1/generations` validates the prompt again and submits it to fal’s queue.
-3. The response is `processing` with a generation id.
-4. The browser polls until fal reports `COMPLETED`.
-5. The server downloads the GLB from an allow-listed `fal.media` or `fal.ai` host, then stores it.
+2. `POST /api/v1/generations` validates the prompt again and submits it to Tripo’s text-to-model endpoint.
+3. The response is `queued` with a generation id.
+4. The browser polls until Tripo reports `success`.
+5. The server downloads the GLB from an allow-listed `tripo3d.ai` or `tripo3d.com` host, then stores it.
 6. The viewer loads `GET /api/v1/generations/:id/model`.
 7. Download uses `GET /api/v1/generations/:id/download` and a sanitized filename such as `cyberpunk-motorcycle.glb`.
 
 ## AI model
 
-**Tripo H3.1 via fal.ai** (`tripo3d/h3.1/text-to-3d`).
+**Tripo v3.1** (`v3.1-20260211`) through `POST https://openapi.tripo3d.ai/v3/generation/text-to-model`.
 
-It was selected because it is a current text-to-3D API, returns a GLB (and a preview image), supports queue status and cancellation, and is cheaper than Meshy’s text-to-3D endpoint on the same platform. One `FAL_KEY` can later point at Hunyuan or Meshy by changing `FAL_MODEL_ID`. Only `prompt` is sent by default, which those models accept. Model-specific options can be added with `FAL_INPUT_JSON`.
-
-Confirm current credit pricing on the model page before generating. Textured Tripo runs are billed to your fal account.
+The request sends the prompt and model id. Tripo returns a `task_id`. The server polls `GET /v3/tasks/{task_id}` until `status` is `success`, then downloads `output.model_url`. Textured runs use the Tripo API credit balance, which is separate from free credits on the Tripo Studio website.
 
 The development sample is the Khronos Duck glTF model, licensed CC BY 4.0. See `backend/assets/demo/ATTRIBUTION.txt`.
 
@@ -106,10 +104,12 @@ The development sample is the Khronos Duck glTF model, licensed CC BY 4.0. See `
 | `NODE_ENV` | No | `development`, `test`, or `production`. |
 | `CORS_ORIGIN` | Yes in production | Comma-separated frontend origins, or `*`. |
 | `PUBLIC_BASE_URL` | No | Public API origin, if you want it recorded for the host. |
-| `AI_PROVIDER` | No | `fal` (default) or `demo`. |
-| `FAL_KEY` | Yes for real generation | fal.ai API key. Server only. |
+| `AI_PROVIDER` | No | `tripo` (default), `fal`, or `demo`. |
+| `TRIPO_API_KEY` | Yes for Tripo | Tripo API key. Server only. |
+| `TRIPO_MODEL` | No | Default `v3.1-20260211`. |
+| `FAL_KEY` | Yes for fal | fal.ai API key. Server only. Used when `AI_PROVIDER=fal`. |
 | `FAL_MODEL_ID` | No | Default `tripo3d/h3.1/text-to-3d`. |
-| `FAL_INPUT_JSON` | No | Extra JSON object merged into the provider body. Cannot set `prompt`. |
+| `FAL_INPUT_JSON` | No | Extra JSON object merged into the fal request body. Cannot set `prompt`. |
 | `DEMO_DELAY_MS` | No | Delay before the sample model is marked ready. |
 | `RATE_LIMIT_WINDOW_MS` | No | Generation window. Default 15 minutes. |
 | `RATE_LIMIT_MAX` | No | Generation posts per IP per window. Default `8`. |
@@ -122,7 +122,7 @@ The development sample is the Khronos Duck glTF model, licensed CC BY 4.0. See `
 | `VITE_API_URL` | Yes in production | Backend origin with no trailing slash. Empty in local dev so Vite proxies `/api`. |
 | `VITE_GITHUB_URL` | No | Repository URL for the header link. Hidden when empty. |
 
-Never put `FAL_KEY` in a `VITE_` variable. The browser only talks to this API.
+Never put `TRIPO_API_KEY` or `FAL_KEY` in a `VITE_` variable. The browser only talks to this API.
 
 ## Local development
 
@@ -145,7 +145,7 @@ npm install
 copy .env.example .env
 ```
 
-Edit `backend/.env` and set `FAL_KEY`. To exercise the viewer without credits:
+Edit `backend/.env` and set `TRIPO_API_KEY`. To exercise the viewer without credits:
 
 ```text
 AI_PROVIDER=demo
@@ -167,7 +167,7 @@ The Vite dev server proxies `/api` to port 4000, so leave `VITE_API_URL` empty l
 ### `GET /api/v1/health`
 
 ```json
-{ "success": true, "data": { "status": "ok", "provider": "fal", "configured": true, "demo": false } }
+{ "success": true, "data": { "status": "ok", "provider": "tripo", "configured": true, "demo": false } }
 ```
 
 ### `GET /api/v1/meta`
@@ -198,11 +198,11 @@ Statuses: `queued`, `processing`, `completed`, `failed`, `cancelled`.
 
 ### `GET /api/v1/generations/:id`
 
-Returns the same generation object. When fal finishes, this request downloads the GLB and then returns `status: "completed"` with `modelUrl`, `downloadUrl`, `fileSize`, and `generationTimeMs`.
+Returns the same generation object. When Tripo finishes, this request downloads the GLB and then returns `status: "completed"` with `modelUrl`, `downloadUrl`, `fileSize`, and `generationTimeMs`.
 
 ### `POST /api/v1/generations/:id/cancel`
 
-Cancels a queued or in-progress fal job when the provider still allows it.
+Cancels a queued or in-progress job when the provider still allows it. The Tripo text-to-model flow does not expose cancel.
 
 ### `GET /api/v1/generations/:id/model`
 
@@ -245,7 +245,7 @@ The frontend is set up for Vercel. The backend is set up for Render. Railway wor
 2. Build command: `npm install && npm run build`.
 3. Start command: `npm start`.
 4. Health check: `/api/v1/health`.
-5. Set `FAL_KEY`, `CORS_ORIGIN` to the Vercel origin, `AI_PROVIDER=fal`, and `NODE_ENV=production`.
+5. Set `TRIPO_API_KEY`, `CORS_ORIGIN` to the Vercel origin, `AI_PROVIDER=tripo`, and `NODE_ENV=production`.
 
 The disk on Render’s free instance is ephemeral. Generated files disappear when the service restarts. A durable bucket would be the next storage step.
 
@@ -253,18 +253,18 @@ The disk on Render’s free instance is ephemeral. Generated files disappear whe
 
 ```bash
 docker build -t 3dforge-api backend
-docker run -p 4000:4000 -e FAL_KEY=your-key -e CORS_ORIGIN=https://your-app.vercel.app 3dforge-api
+docker run -p 4000:4000 -e TRIPO_API_KEY=your-key -e CORS_ORIGIN=https://your-app.vercel.app 3dforge-api
 ```
 
 Do not bake the API key into the image.
 
 ## Troubleshooting
 
-- **“Add FAL_KEY”** — `AI_PROVIDER=fal` and the key is empty. Add it to `backend/.env` and restart the API.
+- **“Add TRIPO_API_KEY”** — `AI_PROVIDER=tripo` and the key is empty. Add it to `backend/.env` and restart the API.
 - **CORS error in production** — `CORS_ORIGIN` must be the exact frontend origin, including `https`.
 - **Viewer says the model could not be loaded** — the file was not a GLB/GLTF, or it was deleted after a server restart.
-- **Generation stays on “Preparing prompt”** — fal still has the job in queue. The queue position is shown when fal sends one.
-- **Demo model appears in production** — `AI_PROVIDER` is `demo`. Set it back to `fal`.
+- **Generation stays on “Waiting in queue” or “Generating 3D model”** — Tripo is still working. Progress is shown when Tripo sends it. A typical model takes about 10–120 seconds.
+- **Demo model appears in production** — `AI_PROVIDER` is `demo`. Set it back to `tripo`.
 
 ## Future improvements
 
